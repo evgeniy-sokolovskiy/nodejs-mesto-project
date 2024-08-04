@@ -1,17 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import { constants } from 'http2';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import User from '../models/user';
 import NotFoundError from '../errors/not-found-error';
 import BadRequestError from '../errors/bad-request-error';
+import { getJwtExpires } from '../helpers/common';
+import ConflictError from '../errors/conflict-error';
+import ERROR_CODES from '../constants/errors';
 
 const { ValidationError, CastError } = mongoose.Error;
-
-export interface RequestWithUser extends Request {
-  user?: {
-    _id: string,
-  }
-}
 
 export const getUsers = async (_req: Request, res: Response, next: NextFunction) => {
   try {
@@ -19,6 +18,19 @@ export const getUsers = async (_req: Request, res: Response, next: NextFunction)
     return res.send(users);
   } catch (error) {
     return next(error);
+  }
+};
+
+export const getOwner = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = await User.findById(req.user._id).orFail(new NotFoundError('Пользователь с указанным _id не найден'));
+    return res.send(user);
+  } catch (error) {
+    if (error instanceof CastError) {
+      return next(new BadRequestError('Передан некорректный id пользователя'));
+    } else {
+      return next(error);
+    }
   }
 };
 
@@ -38,11 +50,20 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
 
 export const createUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, about, avatar } = req.body;
+    const {
+      name, about, avatar, email, password,
+    } = req.body;
+    const passwordHash = await bcrypt.hash(password, 10);
 
-    const newUser = await User.create({ name, about, avatar });
+    const newUser = await User.create({
+      name, about, avatar, email, password: passwordHash,
+    });
     return res.status(constants.HTTP_STATUS_CREATED).send({ data: newUser });
   } catch (error) {
+    // @ts-ignore
+    if (error.code === ERROR_CODES.CONFLICT) {
+      return next(new ConflictError('Пользователь с таким email существует'));
+    }
     if (error instanceof ValidationError) {
       return next(new BadRequestError('Переданы некорректные данные при создании пользователя'));
     } else {
@@ -51,11 +72,11 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const updateUser = async (req: RequestWithUser, res: Response, next: NextFunction) => {
+export const updateUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { name, about } = req.body;
 
-    const user = await User.findByIdAndUpdate(req.user?._id, { name, about }, {
+    const user = await User.findByIdAndUpdate(req.user._id, { name, about }, {
       new: true,
       runValidators: true,
     }).orFail(new NotFoundError('Пользователь с указанным _id не найден.'));
@@ -69,7 +90,7 @@ export const updateUser = async (req: RequestWithUser, res: Response, next: Next
   }
 };
 
-export const updateUserAvatar = async (req: RequestWithUser, res: Response, next: NextFunction) => {
+export const updateUserAvatar = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { avatar } = req.body;
     const user = await User.findByIdAndUpdate(req.user?._id, { $set: { avatar } }, {
@@ -83,5 +104,19 @@ export const updateUserAvatar = async (req: RequestWithUser, res: Response, next
     } else {
       return next(error);
     }
+  }
+};
+
+export const login = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, password } = req.body;
+    const user = await User.findUserByCredentials(email, password);
+    const token = jwt.sign({ _id: user._id }, 'some-secret-key', { expiresIn: String(getJwtExpires(7)) });
+    return res.cookie('jwt', token, {
+      maxAge: getJwtExpires(7),
+      httpOnly: true,
+    }).send({ token });
+  } catch (error) {
+    return next(error);
   }
 };

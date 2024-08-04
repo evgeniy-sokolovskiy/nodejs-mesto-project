@@ -1,14 +1,16 @@
 import { Router } from 'express';
+import { celebrate } from 'celebrate';
 import {
-  createUser, getUserById, getUsers, updateUser, updateUserAvatar,
+  getOwner, getUserById, getUsers, updateUser, updateUserAvatar,
 } from '../controllers/users';
+import SCHEMAS from './schemas';
 
 const router = Router();
 
 router.get('/', getUsers);
-router.get('/:userId', getUserById);
-router.post('/', createUser);
-router.patch('/me', updateUser);
-router.patch('/me/avatar', updateUserAvatar);
+router.get('/:userId', celebrate(SCHEMAS.GET_USER), getUserById);
+router.get('/me', getOwner);
+router.patch('/me', celebrate(SCHEMAS.PATCH_USER), updateUser);
+router.patch('/me/avatar', celebrate(SCHEMAS.PATCH_AVATAR), updateUserAvatar);
 
 export default router;
