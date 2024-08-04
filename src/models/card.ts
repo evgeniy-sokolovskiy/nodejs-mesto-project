@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import validator from '../helpers/validator';
 
 const { Schema } = mongoose;
 
@@ -21,6 +22,9 @@ const cardSchema = new Schema<ICard>({
   link: {
     type: String,
     required: true,
+    validate: {
+      validator: (value: string) => validator.isValidUrl(value),
+    },
   },
   owner: {
     type: Schema.Types.ObjectId,

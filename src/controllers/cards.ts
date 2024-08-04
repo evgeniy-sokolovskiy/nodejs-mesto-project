@@ -3,8 +3,8 @@ import { constants } from 'http2';
 import mongoose from 'mongoose';
 import Card from '../models/card';
 import BadRequestError from '../errors/bad-request-error';
-import { RequestWithUser } from './users';
 import NotFoundError from '../errors/not-found-error';
+import ForbiddenError from '../errors/forbidden-error';
 
 const { ValidationError, CastError } = mongoose.Error;
 
@@ -16,7 +16,7 @@ export const getCards = async (_req: Request, res: Response, next: NextFunction)
     return next(error);
   }
 };
-export const createCard = async (req: RequestWithUser, res: Response, next: NextFunction) => {
+export const createCard = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { name, link } = req.body;
     const owner = req.user?._id;
@@ -32,9 +32,13 @@ export const createCard = async (req: RequestWithUser, res: Response, next: Next
   }
 };
 
-export const deleteCard = async (req: RequestWithUser, res: Response, next: NextFunction) => {
+export const deleteCard = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const card = await Card.findByIdAndRemove(req.params.cardId).orFail(new NotFoundError('Карточка с указанным _id не найдена'));
+    const card = await Card.findById(req.params.cardId).orFail(new NotFoundError('Карточка с указанным _id не найдена'));
+    if (card.owner.toString() !== req.user._id) {
+      return next(new ForbiddenError('Доступ запрещен'));
+    }
+    await card.deleteOne();
     return res.send(card);
   } catch (error) {
     if (error instanceof CastError) {
@@ -45,7 +49,7 @@ export const deleteCard = async (req: RequestWithUser, res: Response, next: Next
   }
 };
 
-export const addLike = async (req: RequestWithUser, res: Response, next: NextFunction) => {
+export const addLike = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const owner = req.user?._id;
     const card = await Card.findByIdAndUpdate(
@@ -63,7 +67,7 @@ export const addLike = async (req: RequestWithUser, res: Response, next: NextFun
   }
 };
 
-export const deleteLike = async (req: RequestWithUser, res: Response, next: NextFunction) => {
+export const deleteLike = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const owner = req.user?._id;
     const card = await Card.findByIdAndUpdate(
