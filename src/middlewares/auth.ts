@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import { constants } from 'http2';
 import { IUser } from '../models/user';
+import CONFIG from '../config';
 
 const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
   const { authorization } = req.headers;
@@ -16,7 +17,7 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
   let payload;
 
   try {
-    payload = jwt.verify(token, 'some-secret-key');
+    payload = jwt.verify(token, CONFIG.JWT_TOKEN);
   } catch (err) {
     return res
       .status(constants.HTTP_STATUS_UNAUTHORIZED)
