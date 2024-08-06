@@ -5,8 +5,6 @@ import { errors } from 'celebrate';
 import helmet from 'helmet';
 import router from './routes';
 import errorHandler from './middlewares/handle-error';
-import authRoutes from './routes/auth';
-import authMiddleware from './middlewares/auth';
 import logger from './middlewares/logger';
 import CONFIG from './config';
 
@@ -20,8 +18,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(helmet());
 
-app.use(authRoutes);
-app.use(authMiddleware);
 app.use(router);
 app.use(logger.errorLogger);
 app.use(errors());

@@ -9,6 +9,7 @@ import BadRequestError from '../errors/bad-request-error';
 import { getJwtExpires } from '../helpers/common';
 import ConflictError from '../errors/conflict-error';
 import ERROR_CODES from '../constants/errors';
+import CONFIG from '../config';
 
 const { ValidationError, CastError } = mongoose.Error;
 
@@ -111,7 +112,11 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
   try {
     const { email, password } = req.body;
     const user = await User.findUserByCredentials(email, password);
-    const token = jwt.sign({ _id: user._id }, 'some-secret-key', { expiresIn: String(getJwtExpires(7)) });
+    const token = jwt.sign(
+      { _id: user._id },
+      CONFIG.JWT_TOKEN,
+      { expiresIn: String(getJwtExpires(7)) },
+    );
     return res.cookie('jwt', token, {
       maxAge: getJwtExpires(7),
       httpOnly: true,

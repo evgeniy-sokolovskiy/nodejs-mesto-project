@@ -15,7 +15,7 @@ const PATCH_USER = {
 
 const PATCH_AVATAR = {
   body: Joi.object().keys({
-    avatar: Joi.string().required(),
+    avatar: Joi.string().uri().required(),
   }),
 };
 
@@ -30,7 +30,7 @@ const POST_SIGNUP = {
   body: Joi.object().keys({
     name: Joi.string(),
     about: Joi.string(),
-    avatar: Joi.string(),
+    avatar: Joi.string().uri(),
     email: Joi.string().required().email(),
     password: Joi.string().required(),
   }),
@@ -39,7 +39,7 @@ const POST_SIGNUP = {
 const POST_CARD = {
   body: Joi.object().keys({
     name: Joi.string().required(),
-    link: Joi.string().required(),
+    link: Joi.string().uri().required(),
   }),
 };
 
